@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>TYPEFALL — Arcade Typing Game</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+  <div id="cursor"></div>
+  <div id="grid-bg"></div>
+  <div id="scanlines"></div>
+  <div id="vignette"></div>
+  <div id="flash-overlay"></div>
+  <div id="level-up-banner">LEVEL UP</div>
+
+  <!-- ═══ NAME MODAL ════════════════════════════════════ -->
+  <div id="name-modal-backdrop">
+    <div id="name-modal">
+      <div class="modal-icon-wrap"><i class="fa-solid fa-skull"></i></div>
+      <div class="modal-title">Game Over</div>
+      <div class="modal-sub">Enter your callsign to save your score</div>
+
+      <div class="modal-score-preview">
+        <div class="modal-score-item">
+          <div class="modal-score-label"><i class="fa-solid fa-star"></i> Score</div>
+          <div class="modal-score-val" id="modal-score-val">000000</div>
+        </div>
+        <div class="modal-score-divider"></div>
+        <div class="modal-score-item">
+          <div class="modal-score-label"><i class="fa-solid fa-bolt"></i> WPM</div>
+          <div class="modal-score-val" id="modal-wpm-val">0</div>
+        </div>
+        <div class="modal-score-divider"></div>
+        <div class="modal-score-item">
+          <div class="modal-score-label"><i class="fa-solid fa-crosshairs"></i> Acc</div>
+          <div class="modal-score-val" id="modal-acc-val">0%</div>
+        </div>
+      </div>
+
+      <div class="modal-best-row">
+        <span class="modal-best-label"><i class="fa-solid fa-trophy"></i> Best</span>
+        <span class="modal-best-val" id="modal-best-val">000000</span>
+      </div>
+
+      <div class="modal-extra-stats">
+        <div class="modal-extra-item">
+          <div class="modal-extra-label"><i class="fa-solid fa-check"></i> Words</div>
+          <div class="modal-extra-val" id="modal-words-val">0</div>
+        </div>
+        <div class="modal-extra-item">
+          <div class="modal-extra-label"><i class="fa-solid fa-fire"></i> Combo</div>
+          <div class="modal-extra-val" id="modal-combo-val">0</div>
+        </div>
+      </div>
+
+      <div class="modal-input-wrap">
+        <span class="modal-input-prefix">›</span>
+        <input type="text" id="modal-name-input" maxlength="12" autocomplete="off" autocorrect="off"
+          autocapitalize="off" spellcheck="false" placeholder="your callsign...">
+        <span class="modal-char-count" id="modal-char-count">0/12</span>
+      </div>
+
+      <div class="modal-buttons">
+        <button class="btn-modal-confirm" id="btn-modal-confirm"><i class="fa-solid fa-floppy-disk"></i> SAVE</button>
+        <button class="btn-modal-skip" id="btn-modal-skip"><i class="fa-solid fa-forward"></i> SKIP</button>
+      </div>
+
+
+    </div>
+  </div>
+
+  <!-- ═══ PAUSE MODAL ═════════════════════════════════ -->
+  <div id="pause-modal-backdrop">
+    <div id="pause-modal">
+      <div class="pause-icon-wrap"><i class="fa-solid fa-pause"></i></div>
+      <div class="pause-title">Paused</div>
+      <div class="pause-sub">Game is paused</div>
+      <div class="pause-buttons">
+        <button class="btn-pause btn-pause-continue" id="btn-pause-continue">
+          <i class="fa-solid fa-play"></i> Continue
+        </button>
+        <button class="btn-pause btn-pause-home" id="btn-pause-home">
+          <i class="fa-solid fa-house"></i> Home Screen
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ CONFIRM MODAL ════════════════════════════════ -->
+  <div id="confirm-modal-backdrop">
+    <div id="confirm-modal">
+      <div class="confirm-title">Quit Game?</div>
+      <div class="confirm-msg">Your current progress will be lost.<br>Are you sure you want to go to the home screen?
+      </div>
+      <div class="confirm-buttons">
+        <button class="btn-confirm-yes" id="btn-confirm-yes"><i class="fa-solid fa-check"></i> Yes, Quit</button>
+        <button class="btn-confirm-no" id="btn-confirm-no"><i class="fa-solid fa-xmark"></i> Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ COUNTDOWN OVERLAY ══════════════════════════════ -->
+  <div id="countdown-overlay">
+    <div id="countdown-number">3</div>
+  </div>
+
+  <!-- ═══ SECRET TOAST ═════════════════════════════════ -->
+  <div id="secret-toast">⚠ LEADERBOARD RESET</div>
+  <div class="screen" id="start-screen">
+    <div class="logo">TYPEFALL</div>
+    <div class="logo-sub">Arcade Typing Challenge</div>
+    <div class="menu-panel">
+      <div class="menu-label"><i class="fa-solid fa-trophy" style="color:var(--neon-yellow);margin-right:.4rem"></i>Top
+        Score</div>
+      <div class="high-score-display" id="menu-high-score">000000</div>
+      <button class="btn btn-primary" id="btn-start">
+        <i class="fa-solid fa-play" style="margin-right:.5rem"></i>START GAME
+      </button>
+      <button class="btn btn-secondary" id="btn-leaderboard">
+        <i class="fa-solid fa-ranking-star" style="margin-right:.5rem"></i>LEADERBOARD
+      </button>
+      <div style="margin-top:1.1rem;font-size:.58rem;color:var(--text-dim);letter-spacing:.14em;line-height:2">
+        Type falling words before they hit the ground
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ GAME SCREEN ════════════════════════════════════ -->
+  <div class="screen hidden" id="game-screen">
+    <div id="hud">
+      <div class="hud-left">
+        <div class="hud-block">
+          <div class="hud-label"><i class="fa-solid fa-star"></i> Score</div>
+          <div class="hud-value" id="hud-score">000000</div>
+        </div>
+        <div class="hud-block">
+          <div class="hud-label"><i class="fa-solid fa-bolt"></i> WPM</div>
+          <div class="hud-value sm" id="hud-wpm">0</div>
+        </div>
+      </div>
+
+      <div class="hud-mid">
+        <div id="hearts">
+          <i class="fa-solid fa-heart heart-icon" id="h1"></i>
+          <i class="fa-solid fa-heart heart-icon" id="h2"></i>
+          <i class="fa-solid fa-heart heart-icon" id="h3"></i>
+        </div>
+      </div>
+
+      <div class="hud-right">
+        <div class="hud-block">
+          <div class="hud-label"><i class="fa-solid fa-crosshairs"></i> Acc</div>
+          <div class="hud-value sm" id="hud-acc">–</div>
+        </div>
+        <span class="level-badge" id="level-badge">LVL 1</span>
+        <button id="btn-menu-ingame"><i class="fa-solid fa-bars" style="margin-right:.3rem"></i>MENU</button>
+      </div>
+    </div>
+
+    <div id="game-area"></div>
+
+    <div id="combo-display" class="hidden">
+      <div class="combo-value" id="combo-num">x2</div>
+      <div class="combo-label">Combo</div>
+    </div>
+
+    <div id="ground"></div>
+
+    <div id="input-area">
+      <i class="fa-solid fa-keyboard input-icon"></i>
+      <input type="text" id="type-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+        placeholder="start typing...">
+    </div>
+  </div>
+
+  <!-- ═══ LEADERBOARD SCREEN ════════════════════════════ -->
+  <div class="screen hidden" id="leaderboard-screen">
+    <div class="lb-title"><i class="fa-solid fa-ranking-star"></i> LEADERBOARD</div>
+    <div class="lb-panel">
+      <div class="lb-header">
+        <span>#</span><span>Player</span><span style="text-align:right">Score</span>
+      </div>
+      <div id="lb-rows"></div>
+    </div>
+    <button class="btn btn-ghost" style="margin-top:1.4rem;width:190px" id="btn-lb-back">
+      <i class="fa-solid fa-arrow-left" style="margin-right:.4rem"></i>BACK
+    </button>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>

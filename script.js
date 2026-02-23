@@ -63,17 +63,98 @@ const WORDS = [
 ];
 
 // ═══════════════════════════════════════════
-// LEADERBOARD
+// SUPABASE CONFIG 
+// ═══════════════════════════════════════════
+const SUPABASE_URL = 'https://zuukqwhpuvqhomfvyzfu.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1dWtxd2hwdXZxaG9tZnZ5emZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4MzUwMjksImV4cCI6MjA4NzQxMTAyOX0.NON1QYVhhhQNLCFhIMLPpX6hIwzz3qGTSamunp2XdpY';
+const SUPABASE_TABLE = 'typefall_scores';
+
+let supabaseClient = null;
+function getSupabase() {
+    if (!supabaseClient) {
+        try {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } catch (e) {
+            console.warn('[Typefall] Supabase init failed, using local fallback:', e);
+        }
+    }
+    return supabaseClient;
+}
+
+// ═══════════════════════════════════════════
+// LEADERBOARD — Supabase + localStorage hybrid
 // ═══════════════════════════════════════════
 const LS_KEY = 'typefall_lb_v2';
-function getLeaderboard() { try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; } catch { return []; } }
-function saveScore(name, score, combo, words, wpm, acc) {
-    const lb = getLeaderboard();
-    lb.push({ name: (name || 'ANON').substring(0, 12), score, combo, words, wpm, acc, date: Date.now() });
+
+// ── Local helpers (unchanged, used as offline fallback) ──
+function getLocalLeaderboard() { try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; } catch { return []; } }
+function saveLocalScore(entry) {
+    const lb = getLocalLeaderboard();
+    lb.push(entry);
     lb.sort((a, b) => b.score - a.score); lb.splice(10);
     localStorage.setItem(LS_KEY, JSON.stringify(lb));
 }
-function getHighScore() { const lb = getLeaderboard(); return lb.length ? lb[0].score : 0; }
+function getLocalHighScore() { const lb = getLocalLeaderboard(); return lb.length ? lb[0].score : 0; }
+
+// ── Remote helpers ──
+async function fetchRemoteLeaderboard() {
+    const sb = getSupabase();
+    if (!sb) return null;
+    try {
+        const { data, error } = await sb
+            .from(SUPABASE_TABLE)
+            .select('name, score, combo, words, wpm, acc, created_at')
+            .order('score', { ascending: false })
+            .limit(10);
+        if (error) throw error;
+        return data;
+    } catch (e) {
+        console.warn('[Typefall] Could not fetch remote leaderboard:', e.message);
+        return null;
+    }
+}
+
+async function saveRemoteScore(name, score, combo, words, wpm, acc) {
+    const sb = getSupabase();
+    if (!sb) return false;
+    try {
+        const { error } = await sb
+            .from(SUPABASE_TABLE)
+            .insert([{ name, score, combo, words, wpm, acc }]);
+        if (error) throw error;
+        return true;
+    } catch (e) {
+        console.warn('[Typefall] Could not save remote score:', e.message);
+        return false;
+    }
+}
+
+// ── Public API (async-aware wrappers) ──
+async function saveScore(name, score, combo, words, wpm, acc) {
+    const cleanName = (name || 'ANON').toUpperCase().substring(0, 12);
+    const entry = { name: cleanName, score, combo, words, wpm, acc, date: Date.now() };
+
+    // Always save locally as backup
+    saveLocalScore(entry);
+
+    // Attempt remote save
+    const ok = await saveRemoteScore(cleanName, score, combo, words, wpm, acc);
+    if (ok) console.log('[Typefall] Score saved to Supabase ✓');
+}
+
+async function getLeaderboard() {
+    const remote = await fetchRemoteLeaderboard();
+    if (remote && remote.length > 0) return remote;
+    return getLocalLeaderboard(); // offline fallback
+}
+
+async function getHighScore() {
+    const lb = await getLeaderboard();
+    return lb.length ? lb[0].score : 0;
+}
+
+// Sync version for fast reads (uses local cache only)
+function getHighScoreSync() { return getLocalHighScore(); }
 
 // ═══════════════════════════════════════════
 // GAME STATE
@@ -411,12 +492,13 @@ function startGame() {
     createWord(); setTimeout(createWord, 600); startSpawning();
 }
 
-function endGame() {
+async function endGame() {
     state.running = false;
     cancelAnimationFrame(state.animFrame);
     clearInterval(state.spawnInterval);
     const wpm = calcWPM(), acc = calcAcc();
-    const hs = getHighScore(), isNew = state.score > hs;
+    const hs = await getHighScore();
+    const isNew = state.score > hs;
     showNameModal(state.score, wpm, acc, isNew ? state.score : hs);
 }
 
@@ -436,11 +518,22 @@ function showNameModal(score, wpm, acc, bestScore) {
     setTimeout(() => $('modal-name-input').focus(), 200);
 }
 
-function closeNameModal(name, goToStart) {
+async function closeNameModal(name, goToStart) {
     $('name-modal-backdrop').classList.remove('open');
     const finalName = (name || 'ANON').toUpperCase().substring(0, 12);
-    saveScore(finalName, state.score, state.maxCombo, state.wordsHit, calcWPM(), calcAcc());
-    updateMenuHighScore();
+
+    // Show saving indicator on button
+    const btn = $('btn-modal-confirm');
+    const origHTML = btn.innerHTML;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> SAVING...';
+    btn.disabled = true;
+
+    await saveScore(finalName, state.score, state.maxCombo, state.wordsHit, calcWPM(), calcAcc());
+
+    btn.innerHTML = origHTML;
+    btn.disabled = false;
+
+    await updateMenuHighScore();
     if (goToStart) showScreen('start-screen');
 }
 
@@ -454,16 +547,23 @@ $('modal-name-input').addEventListener('keydown', e => {
 $('btn-modal-confirm').addEventListener('click', () => closeNameModal($('modal-name-input').value, true));
 $('btn-modal-skip').addEventListener('click', () => closeNameModal('ANON', true));
 
-function updateMenuHighScore() {
-    $('menu-high-score').textContent = String(getHighScore()).padStart(6, '0');
+async function updateMenuHighScore() {
+    // Show local score instantly while remote loads
+    $('menu-high-score').textContent = String(getHighScoreSync()).padStart(6, '0');
+    const hs = await getHighScore();
+    $('menu-high-score').textContent = String(hs).padStart(6, '0');
 }
 
 // ═══════════════════════════════════════════
 // LEADERBOARD
 // ═══════════════════════════════════════════
-function showLeaderboard() {
-    const lb = getLeaderboard();
+async function showLeaderboard() {
+    showScreen('leaderboard-screen');
     const rows = $('lb-rows');
+    // Show loading state
+    rows.innerHTML = '<div style="padding:1.8rem;text-align:center;color:var(--text-dim);font-size:.8rem;letter-spacing:.2em"><i class="fa-solid fa-spinner fa-spin"></i> LOADING...</div>';
+
+    const lb = await getLeaderboard();
     rows.innerHTML = '';
     if (!lb.length) {
         rows.innerHTML = '<div style="padding:1.8rem;text-align:center;color:var(--text-dim);font-size:.8rem;letter-spacing:.2em">NO SCORES YET</div>';
@@ -484,7 +584,6 @@ function showLeaderboard() {
             rows.appendChild(row);
         });
     }
-    showScreen('leaderboard-screen');
 }
 
 // ═══════════════════════════════════════════
@@ -570,6 +669,7 @@ $('btn-confirm-no').addEventListener('click', () => {
                 const toast = $('secret-toast');
                 toast.classList.add('show');
                 setTimeout(() => toast.classList.remove('show'), 2500);
+                // Note: secret code only clears local cache, not the Supabase table
             }
         } else {
             typed = '';

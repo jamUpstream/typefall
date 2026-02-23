@@ -114,6 +114,20 @@ function showScreen(id) {
     });
     // Show/hide in-game menu button
     $('btn-menu-ingame').style.display = (id === 'game-screen') ? 'block' : 'none';
+    // Toggle custom mobile keyboard (only present on touch devices)
+    const mobileKbd = $('mobile-keyboard');
+    if (mobileKbd) {
+        if (id === 'game-screen') {
+            mobileKbd.classList.remove('hidden');
+            // Measure height after layout — use two rAF ticks to ensure rendering is done
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                const h = mobileKbd.offsetHeight;
+                document.documentElement.style.setProperty('--kbd-height', h + 'px');
+            }));
+        } else {
+            mobileKbd.classList.add('hidden');
+        }
+    }
 }
 
 function updateHUD() {
@@ -204,7 +218,8 @@ function renderWordEl(word) {
 }
 
 function getZoneClass(y) {
-    const groundY = window.innerHeight - 60;
+    const kbdH = (window.mobileKbdHeight ? window.mobileKbdHeight() : 0);
+    const groundY = window.innerHeight - 60 - kbdH;
     const pct = Math.max(0, Math.min(1, y / groundY));
     if (pct < .45) return 'zone-safe';
     if (pct < .68) return 'zone-warn';
@@ -234,7 +249,9 @@ function gameLoop(now) {
     if (!state.running) return;
     const dt = Math.min((now - lastFrame) / 1000, .05);
     lastFrame = now;
-    const groundY = window.innerHeight - 60;
+    // Account for mobile keyboard + input bar height so ground is always visible
+    const kbdH = (window.mobileKbdHeight ? window.mobileKbdHeight() : 0);
+    const groundY = window.innerHeight - 60 - kbdH;
     state.words.forEach(word => {
         if (word.dead) return;
         word.y += word.speed * dt;
@@ -573,4 +590,97 @@ updateMenuHighScore();
 (function animateGrid() {
     const grid = $('grid-bg'); let offset = 0;
     setInterval(() => { offset = (offset + .3) % 48; grid.style.backgroundPosition = `0 ${offset}px`; }, 16);
+})();
+
+// ═══════════════════════════════════════════
+// CUSTOM MOBILE KEYBOARD
+// ═══════════════════════════════════════════
+(function () {
+    // Strict mobile/tablet detection — excludes laptops with touch screens
+    // Only activate if the PRIMARY pointer is coarse (finger), not fine (mouse)
+    const isMobileOrTablet = () => {
+        const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
+        const noFinePointer = !window.matchMedia('(pointer: fine)').matches;
+        const hasTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+        return coarsePointer && noFinePointer && hasTouch;
+    };
+
+    if (!isMobileOrTablet()) return; // desktop: use native keyboard, no custom kbd shown
+
+    const kbd = $('mobile-keyboard');
+    const typeInput = $('type-input');
+
+    // Mark body so CSS can offset game elements
+    document.body.classList.add('mobile-kbd-active');
+
+    // ── Height tracking ──────────────────────
+    function getKbdHeight() {
+        return kbd.classList.contains('hidden') ? 0 : kbd.offsetHeight;
+    }
+    function updateKbdHeight() {
+        const h = getKbdHeight();
+        document.documentElement.style.setProperty('--kbd-height', h + 'px');
+    }
+    window.addEventListener('resize', updateKbdHeight);
+
+    // Expose so gameLoop can read the real usable game area bottom
+    window.mobileKbdHeight = getKbdHeight;
+
+    // ── Block native OS keyboard ─────────────
+    // inputmode=none is the strongest signal to suppress the OS keyboard
+    typeInput.setAttribute('readonly', 'readonly');
+    typeInput.setAttribute('inputmode', 'none');
+    typeInput.addEventListener('focus', () => typeInput.blur());
+
+    // ── Key injection ────────────────────────
+    // We bypass the readonly guard by temporarily removing it, mutating value,
+    // restoring it, then dispatching a real InputEvent so the game handler fires normally.
+    function injectChar(key) {
+        if (!state.running) return;
+        typeInput.removeAttribute('readonly');
+        if (key === 'Backspace') {
+            typeInput.value = typeInput.value.slice(0, -1);
+        } else {
+            typeInput.value += key.toLowerCase();
+        }
+        typeInput.setAttribute('readonly', 'readonly');
+        // Dispatch as InputEvent so e.target.value is correct inside the handler
+        typeInput.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: true }));
+    }
+
+    // ── Touch handlers ───────────────────────
+    kbd.addEventListener('touchstart', e => {
+        e.preventDefault(); // critical: blocks OS keyboard + scroll
+        const btn = e.target.closest('.kbd-key');
+        if (!btn) return;
+        btn.classList.add('pressed');
+        injectChar(btn.dataset.key);
+    }, { passive: false });
+
+    kbd.addEventListener('touchend', e => {
+        e.preventDefault();
+        const btn = e.target.closest('.kbd-key');
+        if (btn) setTimeout(() => btn.classList.remove('pressed'), 80);
+    }, { passive: false });
+
+    // Prevent any touch on the keyboard from bubbling to game-area
+    kbd.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+
+    // ── Name modal: restore native kb for callsign entry ──
+    $('name-modal-backdrop').addEventListener('transitionend', () => {
+        const isOpen = $('name-modal-backdrop').classList.contains('open');
+        const nameInput = $('modal-name-input');
+        if (isOpen) {
+            nameInput.removeAttribute('readonly');
+            nameInput.removeAttribute('inputmode');
+            setTimeout(() => nameInput.focus(), 150);
+        } else {
+            typeInput.setAttribute('readonly', 'readonly');
+            typeInput.setAttribute('inputmode', 'none');
+        }
+    });
+
+    // Initial height measurement after first show
+    kbd.addEventListener('transitionend', updateKbdHeight);
+    setTimeout(updateKbdHeight, 100);
 })();

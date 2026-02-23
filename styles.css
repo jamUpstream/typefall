@@ -1605,3 +1605,115 @@ body {
         font-size: 1.3rem;
     }
 }
+
+/* ── CUSTOM MOBILE KEYBOARD ──────────────── */
+
+/* Double-guard: never show on mouse/trackpad devices */
+@media (pointer: fine) {
+    #mobile-keyboard {
+        display: none !important;
+    }
+}
+
+#mobile-keyboard {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 60;
+    padding: .4rem .25rem .5rem;
+    background: linear-gradient(180deg, rgba(5, 8, 15, .97) 0%, rgba(0, 5, 18, 1) 100%);
+    border-top: 1px solid rgba(0, 245, 255, .2);
+    box-shadow: 0 -4px 32px rgba(0, 245, 255, .07);
+    display: flex;
+    flex-direction: column;
+    gap: .28rem;
+}
+
+#mobile-keyboard.hidden {
+    display: none !important;
+}
+
+.kbd-row {
+    display: flex;
+    justify-content: center;
+    gap: .18rem;
+}
+
+.kbd-key {
+    flex: 1;
+    max-width: 40px;
+    min-width: 0;
+    height: 40px;
+    background: rgba(0, 20, 40, .85);
+    border: 1px solid rgba(0, 245, 255, .2);
+    border-bottom: 2px solid rgba(0, 245, 255, .42);
+    border-radius: 5px;
+    color: var(--text-main);
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: clamp(.5rem, 2.4vw, .74rem);
+    letter-spacing: .02em;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: background .07s, box-shadow .07s, transform .07s, color .07s, border-color .07s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, .45);
+}
+
+.kbd-key.pressed {
+    background: rgba(0, 245, 255, .16);
+    border-color: var(--neon-cyan);
+    border-bottom-color: var(--neon-cyan);
+    box-shadow: 0 0 14px rgba(0, 245, 255, .5), inset 0 0 8px rgba(0, 245, 255, .1);
+    transform: scale(.86);
+    color: var(--neon-cyan);
+    text-shadow: 0 0 8px var(--neon-cyan);
+}
+
+.kbd-backspace {
+    max-width: 50px;
+    background: rgba(255, 0, 110, .07);
+    border-color: rgba(255, 0, 110, .3);
+    border-bottom-color: rgba(255, 0, 110, .52);
+    color: var(--neon-pink);
+    font-size: .95rem;
+}
+
+.kbd-backspace.pressed {
+    background: rgba(255, 0, 110, .2);
+    border-color: var(--neon-pink);
+    border-bottom-color: var(--neon-pink);
+    box-shadow: 0 0 14px rgba(255, 0, 110, .5), inset 0 0 8px rgba(255, 0, 110, .1);
+    transform: scale(.86);
+    text-shadow: 0 0 8px var(--neon-pink);
+}
+
+/* Shift ground, game-area, and input-area above the custom keyboard */
+body.mobile-kbd-active #ground {
+    bottom: calc(var(--kbd-height, 150px) + 54px);
+}
+
+body.mobile-kbd-active #input-area {
+    bottom: var(--kbd-height, 150px);
+}
+
+body.mobile-kbd-active #game-area {
+    bottom: calc(var(--kbd-height, 150px) + 56px);
+}
+
+@media (max-width: 380px) {
+    .kbd-key {
+        height: 36px;
+        font-size: .46rem;
+    }
+    .kbd-backspace {
+        max-width: 44px;
+        font-size: .85rem;
+    }
+}

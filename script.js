@@ -1,3 +1,144 @@
+// ══════════════════════════════════════════════════════════
+// TYPEFALL — INTRO ANIMATION
+// ══════════════════════════════════════════════════════════
+(function runTypefallIntro() {
+    const overlay = document.getElementById('tf-intro');
+    const iCanvas = document.getElementById('tf-intro-canvas');
+    const bootLog = document.getElementById('tf-boot-log');
+    const logoWrap = document.getElementById('tf-logo-wrap');
+    const logoText = document.getElementById('tf-logo-text');
+    const taglineEl = document.getElementById('tf-tagline');
+    const startScrn = document.getElementById('start-screen');
+
+    // Hide start screen until we're done
+    startScrn.classList.add('intro-hidden');
+
+    // ── Particle canvas ──────────────────────────────────────
+    const ictx = iCanvas.getContext('2d');
+
+    function resizeCanvas() {
+        iCanvas.width = window.innerWidth;
+        iCanvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    // Falling letter particles — matching the game's theme
+    const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const particles = [];
+    for (let i = 0; i < 55; i++) {
+        particles.push({
+            x: Math.random() * window.innerWidth,
+            y: Math.random() * window.innerHeight,
+            vy: 0.4 + Math.random() * 1.2,
+            char: CHARS[Math.floor(Math.random() * CHARS.length)],
+            alpha: 0.04 + Math.random() * 0.13,
+            size: clamp(10, Math.random() * 18, 26),
+            col: Math.random() > 0.6 ? '#00f5ff' : (Math.random() > 0.5 ? '#ff006e' : '#ffdd00'),
+            tick: Math.floor(Math.random() * 40),
+        });
+    }
+
+    function clamp(min, v, max) { return Math.min(max, Math.max(min, v)); }
+
+    let raf;
+    function tickParticles() {
+        ictx.clearRect(0, 0, iCanvas.width, iCanvas.height);
+        ictx.textBaseline = 'top';
+        for (const p of particles) {
+            p.y += p.vy;
+            p.tick++;
+            if (p.tick % 18 === 0) p.char = CHARS[Math.floor(Math.random() * CHARS.length)];
+            if (p.y > iCanvas.height + 30) { p.y = -20; p.x = Math.random() * iCanvas.width; }
+            ictx.globalAlpha = p.alpha;
+            ictx.fillStyle = p.col;
+            ictx.font = `bold ${p.size}px 'Orbitron', monospace`;
+            ictx.fillText(p.char, p.x, p.y);
+        }
+        ictx.globalAlpha = 1;
+        raf = requestAnimationFrame(tickParticles);
+    }
+    tickParticles();
+
+    // ── Scan beam ────────────────────────────────────────────
+    const beam = document.createElement('div');
+    beam.className = 'tf-scanbeam';
+    overlay.appendChild(beam);
+
+    // ── Boot lines ───────────────────────────────────────────
+    const BOOT = [
+        { text: '> TYPEFALL ENGINE v2.1.0 BOOTING...', type: '' },
+        { text: '> LOADING WORD DATABASE [4096 ENTRIES]', type: 'ok' },
+        { text: '> INITIALIZING PHYSICS ENGINE', type: 'ok' },
+        { text: '> CALIBRATING COMBO MULTIPLIERS', type: 'ok' },
+        { text: '> LEADERBOARD SYNC...', type: 'ok' },
+        { text: '> ALL SYSTEMS READY — PREPARE TO TYPE', type: '' },
+    ];
+
+    let done = false;
+
+    function finish() {
+        if (done) return;
+        done = true;
+        cancelAnimationFrame(raf);
+        overlay.classList.add('done');
+        // Remove intro classes so the game's own showScreen() logic has full control
+        startScrn.classList.remove('intro-hidden', 'intro-visible');
+        // Manually restore visible state for the start screen just this once
+        startScrn.style.opacity = '1';
+        startScrn.style.transform = 'scale(1)';
+        startScrn.style.pointerEvents = 'all';
+        setTimeout(() => {
+            // Clean up inline styles so showScreen() transitions work normally going forward
+            startScrn.style.opacity = '';
+            startScrn.style.transform = '';
+            startScrn.style.pointerEvents = '';
+            overlay.remove();
+            window.removeEventListener('resize', resizeCanvas);
+        }, 700);
+    }
+
+    // Skip on tap / click / space
+    function skipHandler(e) {
+        if (e.type === 'keydown' && e.code !== 'Space') return;
+        overlay.removeEventListener('click', skipHandler);
+        overlay.removeEventListener('touchstart', skipHandler);
+        document.removeEventListener('keydown', skipHandler);
+        finish();
+    }
+    overlay.addEventListener('click', skipHandler);
+    overlay.addEventListener('touchstart', skipHandler, { passive: true });
+    document.addEventListener('keydown', skipHandler);
+
+    // ── Sequence ─────────────────────────────────────────────
+    let lineIdx = 0;
+    function addLine() {
+        if (lineIdx >= BOOT.length) { setTimeout(showLogo, 100); return; }
+        const entry = BOOT[lineIdx];
+        const div = document.createElement('div');
+        div.className = 'tf-boot-line' + (entry.type ? ' ' + entry.type : '');
+        div.textContent = entry.text;
+        bootLog.appendChild(div);
+        lineIdx++;
+        const delay = lineIdx >= BOOT.length ? 480 : 200;
+        setTimeout(addLine, delay);
+    }
+
+    function showLogo() {
+        logoWrap.classList.add('visible');
+        setTimeout(() => {
+            logoText.classList.add('reveal');
+            // glitch flash after the sweep
+            setTimeout(() => { logoText.classList.add('glitch'); }, 650);
+        }, 60);
+        setTimeout(() => taglineEl.classList.add('visible'), 950);
+        setTimeout(finish, 2700);
+    }
+
+    // Start after scan beam (1s)
+    setTimeout(addLine, 280);
+})();
+
 // ═══════════════════════════════════════════
 // SOUND ENGINE
 // ═══════════════════════════════════════════
@@ -53,13 +194,86 @@ function playSound(type) {
 // WORD LIST
 // ═══════════════════════════════════════════
 const WORDS = [
+    // ── 3–4 letters ─────────────────────────────────────────────────────────
+    'api', 'bit', 'bug', 'cpu', 'css', 'dom', 'hex', 'hue', 'ide', 'int',
+    'i/o', 'job', 'key', 'lag', 'log', 'map', 'net', 'npm', 'orm', 'pod',
+    'ram', 'sdk', 'sql', 'ssh', 'tcp', 'url', 'var', 'web', 'xml', 'zip',
     'node', 'code', 'type', 'fire', 'byte', 'data', 'loop', 'link', 'grid', 'scan',
+    'hash', 'heap', 'hook', 'host', 'icon', 'init', 'json', 'kern', 'kill', 'lane',
+    'lint', 'list', 'load', 'lock', 'mock', 'mode', 'null', 'oath', 'open', 'over',
+    'pack', 'page', 'path', 'ping', 'pipe', 'plug', 'poll', 'pool', 'port', 'post',
+    'push', 'read', 'repo', 'rest', 'role', 'root', 'rule', 'salt', 'seed', 'send',
+    'skip', 'slot', 'snap', 'sock', 'sort', 'span', 'spec', 'spin', 'sync', 'tail',
+    'task', 'test', 'tick', 'tile', 'time', 'tree', 'trim', 'unix', 'user', 'view',
+    'void', 'wave', 'wire', 'wrap', 'xor', 'yaml', 'zero', 'zone',
+
+    // ── 5–6 letters ─────────────────────────────────────────────────────────
     'pixel', 'cache', 'stack', 'parse', 'debug', 'class', 'query', 'array', 'index', 'frame',
+    'abort', 'agent', 'alias', 'alloc', 'async', 'audit', 'badge', 'batch', 'blink', 'block',
+    'brace', 'brand', 'break', 'build', 'burst', 'chunk', 'cidr', 'clean', 'click', 'clock',
+    'clone', 'close', 'cloud', 'codec', 'color', 'const', 'crypt', 'cycle', 'delta', 'depot',
+    'depth', 'diff', 'drain', 'drive', 'embed', 'emmet', 'emit', 'entry', 'error', 'event',
+    'fetch', 'field', 'fixed', 'flags', 'flash', 'float', 'flush', 'focus', 'forge', 'fork',
+    'forms', 'giant', 'glyph', 'grant', 'graph', 'group', 'guard', 'input', 'invert', 'issue',
+    'layer', 'macro', 'match', 'merge', 'model', 'mount', 'mutex', 'nonce', 'oauth', 'order',
+    'output', 'owner', 'patch', 'pause', 'phase', 'pivot', 'pixel', 'place', 'plain', 'plane',
+    'point', 'power', 'probe', 'proxy', 'proxy', 'prune', 'pulse', 'purge', 'queue', 'quota',
+    'raise', 'range', 'rates', 'react', 'realm', 'redis', 'redis', 'regex', 'relay', 'reset',
+    'retry', 'reuse', 'route', 'rules', 'scale', 'scope', 'score', 'shard', 'shell', 'shift',
+    'slice', 'solid', 'spawn', 'stage', 'state', 'stdio', 'store', 'style', 'super', 'surge',
+    'swift', 'table', 'theme', 'timer', 'token', 'topic', 'trace', 'trait', 'trans', 'tuple',
+    'typed', 'types', 'union', 'utils', 'value', 'vault', 'vnode', 'vuex', 'watch', 'width',
+    'yield',
+
+    // ── 6–7 letters ─────────────────────────────────────────────────────────
     'system', 'stream', 'render', 'server', 'module', 'object', 'vector', 'cursor', 'buffer', 'signal',
+    'access', 'action', 'alpine', 'anchor', 'append', 'assert', 'assign', 'attach', 'author', 'binary',
+    'bitmap', 'bridge', 'canvas', 'castle', 'cipher', 'client', 'commit', 'cookie', 'create', 'cursor',
+    'daemon', 'decode', 'delete', 'docker', 'encode', 'engine', 'entity', 'escape', 'export', 'extend',
+    'filter', 'finder', 'finite', 'folder', 'format', 'frozen', 'future', 'global', 'gorout', 'gradle',
+    'groovy', 'handle', 'header', 'hidden', 'hotkey', 'import', 'inject', 'inline', 'invoke', 'jshint',
+    'jquery', 'kotlin', 'labels', 'lambda', 'launch', 'layout', 'lexeme', 'linear', 'linker', 'linter',
+    'loader', 'locale', 'logger', 'lookup', 'malloc', 'mapper', 'matrix', 'method', 'metric', 'minify',
+    'mirror', 'mobile', 'native', 'offset', 'online', 'opener', 'option', 'oracle', 'packet', 'parser',
+    'prefix', 'prompt', 'public', 'python', 'reader', 'record', 'reduce', 'reflex', 'reload', 'remote',
+    'rename', 'return', 'router', 'runner', 'scalar', 'schema', 'script', 'search', 'secure', 'select',
+    'serial', 'setter', 'shader', 'shared', 'socket', 'source', 'sqlite', 'status', 'stderr', 'stdout',
+    'string', 'struct', 'submit', 'switch', 'syntax', 'target', 'tensor', 'thread', 'toggle', 'update',
+    'upload', 'vertex', 'visual', 'webkit', 'worker', 'writer',
+
+    // ── 7–9 letters ─────────────────────────────────────────────────────────
     'runtime', 'network', 'compile', 'encrypt', 'process', 'console', 'command', 'memory', 'deploy', 'config',
+    'abstain', 'adapter', 'address', 'animate', 'backoff', 'backend', 'binding', 'boolean', 'browser',
+    'builder', 'bundler', 'caching', 'cascade', 'channel', 'charset', 'closure', 'cluster', 'codegen',
+    'context', 'counter', 'crawler', 'dataset', 'debounce', 'declare', 'decrypt', 'default', 'defined',
+    'diagram', 'disable', 'display', 'dispose', 'element', 'emitter', 'enabled', 'enqueue', 'execute',
+    'explain', 'factory', 'favicon', 'feature', 'finally', 'flatten', 'foreach', 'gateway', 'generic',
+    'getters', 'handler', 'hosting', 'integer', 'iterate', 'keydown', 'keygen', 'keymap', 'keystore',
+    'latency', 'layout', 'library', 'license', 'listbox', 'logging', 'machine', 'managed', 'mapping',
+    'maximum', 'message', 'minimum', 'payload', 'pending', 'pointer', 'polling', 'preview', 'private',
+    'promise', 'protect', 'provide', 'publish', 'radiant', 'reactive', 'rebuild', 'recycle', 'refresh',
+    'release', 'request', 'resolve', 'restart', 'sandbox', 'service', 'session', 'sidebar', 'sorting',
+    'storage', 'subtype', 'support', 'testing', 'timeout', 'trigger', 'typedef', 'unshift', 'version',
+    'virtual', 'webhook', 'wrapper',
+
+    // ── 9–12 letters ────────────────────────────────────────────────────────
     'interface', 'algorithm', 'framework', 'database', 'function', 'variable', 'prototype', 'recursive',
     'asynchronous', 'blockchain', 'middleware', 'iteration', 'parameter', 'exception', 'component',
-    'typescript', 'javascript', 'developer', 'repository', 'benchmark'
+    'typescript', 'javascript', 'developer', 'repository', 'benchmark',
+    'abstraction', 'accessibility', 'annotation', 'archetype', 'assertion', 'attribute',
+    'automation', 'bandwidth', 'bytecode', 'callbacks', 'classname', 'codeblock',
+    'collision', 'concurrency', 'constructor', 'containers', 'controller', 'datastore',
+    'deadlock', 'decorator', 'dependency', 'directive', 'discovery', 'dispatcher',
+    'encapsulate', 'encryption', 'endpoints', 'execution', 'extension', 'generator',
+    'handshake', 'hashmap', 'hierarchy', 'hydration', 'immutable', 'implement',
+    'injection', 'inspector', 'instantiate', 'intercept', 'kubernetes', 'lifecycle',
+    'listeners', 'localhost', 'marshalling', 'microservice', 'namespace', 'overload',
+    'overwrite', 'pagination', 'polymorphism', 'propagation', 'refactoring', 'reflection',
+    'rendering', 'replication', 'resilience', 'resolution', 'responses', 'scheduler',
+    'serializer', 'singleton', 'sourcemap', 'stacktrace', 'statement', 'stateless',
+    'streaming', 'structure', 'stylesheet', 'subroutine', 'substring', 'threading',
+    'throttling', 'transaction', 'transform', 'transpiler', 'traversal', 'undefined',
+    'validation', 'virtualize', 'websocket', 'whitelist',
 ];
 
 // ═══════════════════════════════════════════

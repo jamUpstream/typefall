@@ -1717,3 +1717,213 @@ body.mobile-kbd-active #game-area {
         font-size: .85rem;
     }
 }
+/* ══════════════════════════════════════════════════════════
+   TYPEFALL — INTRO OVERLAY
+   ══════════════════════════════════════════════════════════ */
+
+#tf-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 8000;
+  background: #05080f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: opacity 0.65s ease, visibility 0.65s ease;
+}
+
+#tf-intro.done {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+#tf-intro-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* ── Inner content column ───────────────────────────────── */
+#tf-intro-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  width: 100%;
+  max-width: 560px;
+  padding: 0 28px;
+}
+
+/* ── Boot log ───────────────────────────────────────────── */
+#tf-boot-log {
+  width: 100%;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: clamp(0.55rem, 1.6vw, 0.68rem);
+  letter-spacing: 0.12em;
+  color: rgba(0, 245, 255, 0.5);
+  line-height: 1.9;
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.tf-boot-line {
+  opacity: 0;
+  transform: translateX(-10px);
+  animation: tfBootIn 0.15s ease forwards;
+}
+
+.tf-boot-line.ok::after {
+  content: ' OK';
+  color: var(--neon-green);
+  text-shadow: 0 0 8px var(--neon-green);
+}
+
+.tf-boot-line.warn::after {
+  content: ' WARN';
+  color: var(--neon-yellow);
+  text-shadow: 0 0 8px var(--neon-yellow);
+}
+
+@keyframes tfBootIn {
+  to { opacity: 1; transform: none; }
+}
+
+/* ── Logo block ─────────────────────────────────────────── */
+#tf-logo-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+
+#tf-logo-wrap.visible {
+  opacity: 1;
+  transform: none;
+}
+
+#tf-logo-text {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 900;
+  font-size: clamp(3rem, 12vw, 6.5rem);
+  letter-spacing: 0.15em;
+  color: var(--neon-cyan);
+  text-shadow:
+    0 0 20px var(--neon-cyan),
+    0 0 60px rgba(0, 245, 255, 0.4),
+    0 0 120px rgba(0, 245, 255, 0.15);
+  /* Clip-reveal: max-width 0 → full */
+  overflow: hidden;
+  max-width: 0;
+  white-space: nowrap;
+  transition: max-width 0.6s cubic-bezier(0.77, 0, 0.18, 1);
+}
+
+#tf-logo-text.reveal {
+  max-width: 800px;
+}
+
+#tf-logo-text.glitch {
+  animation: tfGlitch 0.2s steps(2) forwards;
+}
+
+@keyframes tfGlitch {
+  0%   { filter: none; transform: none; }
+  30%  { filter: hue-rotate(90deg) brightness(2.2); transform: skewX(5deg) translateX(5px); }
+  60%  { filter: hue-rotate(-90deg) brightness(1.8); transform: skewX(-4deg) translateX(-4px); color: var(--neon-pink); }
+  100% { filter: none; transform: none; color: var(--neon-cyan); }
+}
+
+#tf-logo-sub {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: clamp(0.45rem, 1.8vw, 0.72rem);
+  letter-spacing: 0.5em;
+  color: var(--neon-pink);
+  text-shadow: 0 0 15px var(--neon-pink);
+  opacity: 0;
+  transition: opacity 0.4s ease 0.3s;
+}
+
+#tf-logo-wrap.visible #tf-logo-sub {
+  opacity: 1;
+}
+
+/* Animated underbar */
+#tf-logo-bar {
+  height: 2px;
+  width: 0;
+  background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+  box-shadow: 0 0 12px var(--neon-cyan);
+  transition: width 0.55s ease 0.2s;
+}
+
+#tf-logo-wrap.visible #tf-logo-bar {
+  width: min(420px, 80vw);
+}
+
+/* ── Tagline ────────────────────────────────────────────── */
+#tf-tagline {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: clamp(0.52rem, 1.5vw, 0.68rem);
+  letter-spacing: 0.3em;
+  color: rgba(224, 247, 255, 0.38);
+  text-transform: uppercase;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+
+#tf-tagline.visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── Skip hint ──────────────────────────────────────────── */
+#tf-skip-hint {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.52rem;
+  letter-spacing: 0.35em;
+  color: rgba(0, 245, 255, 0.18);
+  opacity: 0;
+  animation: tfSkipFade 0.8s ease 1.4s forwards;
+}
+
+@keyframes tfSkipFade {
+  to { opacity: 1; }
+}
+
+/* ── Horizontal scan beam ───────────────────────────────── */
+.tf-scanbeam {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--neon-cyan), var(--neon-pink), transparent);
+  box-shadow: 0 0 20px var(--neon-cyan), 0 0 50px rgba(0, 245, 255, 0.35);
+  pointer-events: none;
+  animation: tfScanBeam 1s ease-in-out forwards;
+}
+
+@keyframes tfScanBeam {
+  from { top: -3px; opacity: 1; }
+  to   { top: 100%;  opacity: 0.1; }
+}
+
+/* Start screen hidden until intro finishes */
+#start-screen.intro-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.97);
+  transition: opacity 0.55s ease, transform 0.55s ease;
+}

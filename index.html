@@ -10,6 +10,24 @@
     rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="styles.css">
+
+  <!-- ═══ PWA ════════════════════════════════════════════ -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#00f5ff">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TYPEFALL">
+  <meta name="application-name" content="TYPEFALL">
+  <meta name="msapplication-TileColor" content="#050a0f">
+  <meta name="msapplication-TileImage" content="icons/icon-144.png">
+  <!-- Apple Touch Icons -->
+  <link rel="apple-touch-icon" href="icons/icon-152.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png">
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-96.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/icon-72.png">
 </head>
 
 <body>
@@ -129,6 +147,33 @@
 
   <!-- ═══ SECRET TOAST ═════════════════════════════════ -->
   <div id="secret-toast">⚠ LEADERBOARD RESET</div>
+
+  <!-- ═══ PWA INSTALL BANNER ═══════════════════════════════ -->
+  <div id="pwa-install-banner">
+    <div id="pwa-banner-icon">
+      <img src="icons/icon-72.png" alt="TYPEFALL icon">
+    </div>
+    <div id="pwa-banner-text">
+      <div id="pwa-banner-title">Install TYPEFALL</div>
+      <div id="pwa-banner-sub">Play offline, anytime</div>
+    </div>
+    <button id="pwa-btn-install"><i class="fa-solid fa-download"></i> Install</button>
+    <button id="pwa-btn-dismiss"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+
+  <!-- Apple/iOS install instructions tooltip -->
+  <div id="pwa-ios-tip">
+    <div id="pwa-ios-tip-inner">
+      <div id="pwa-ios-tip-title"><i class="fa-solid fa-mobile-screen"></i> Install on iPhone / iPad</div>
+      <div id="pwa-ios-tip-steps">
+        <div class="pwa-ios-step"><span class="pwa-ios-num">1</span>Tap <strong>Share</strong> <i class="fa-solid fa-arrow-up-from-bracket"></i> in Safari</div>
+        <div class="pwa-ios-step"><span class="pwa-ios-num">2</span>Select <strong>Add to Home Screen</strong></div>
+        <div class="pwa-ios-step"><span class="pwa-ios-num">3</span>Tap <strong>Add</strong> to confirm</div>
+      </div>
+      <button id="pwa-ios-tip-close"><i class="fa-solid fa-xmark"></i> Got it</button>
+    </div>
+    <div id="pwa-ios-tip-arrow"></div>
+  </div>
   <div class="screen" id="start-screen">
     <div class="logo">TYPEFALL</div>
     <div class="logo-sub">Arcade Typing Challenge</div>
@@ -237,6 +282,89 @@
 
   <script src="script.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- ═══ PWA SERVICE WORKER + INSTALL PROMPT ══════════════ -->
+  <script>
+    // ── Service Worker ───────────────────────────────────────
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('[PWA] SW registered:', reg.scope))
+          .catch(err => console.warn('[PWA] SW failed:', err));
+      });
+    }
+
+    // ── Install Banner Logic ─────────────────────────────────
+    (function () {
+      const DISMISSED_KEY = 'pwa-install-dismissed';
+      const banner  = document.getElementById('pwa-install-banner');
+      const btnInstall  = document.getElementById('pwa-btn-install');
+      const btnDismiss  = document.getElementById('pwa-btn-dismiss');
+      const iosTip  = document.getElementById('pwa-ios-tip');
+      const iosTipClose = document.getElementById('pwa-ios-tip-close');
+
+      let deferredPrompt = null;
+
+      // Detect iOS Safari (no beforeinstallprompt support)
+      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+      const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches
+        || window.navigator.standalone === true;
+
+      // Don't show if already installed or previously dismissed
+      if (isInStandaloneMode) return;
+      if (sessionStorage.getItem(DISMISSED_KEY)) return;
+
+      function showBanner() {
+        banner.classList.add('pwa-banner-visible');
+      }
+
+      function hideBanner() {
+        banner.classList.remove('pwa-banner-visible');
+        sessionStorage.setItem(DISMISSED_KEY, '1');
+      }
+
+      // Android/Chrome: capture the prompt, show after short delay
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        setTimeout(showBanner, 1500);
+      });
+
+      // iOS: show custom tip instead
+      if (isIOS) {
+        setTimeout(() => {
+          banner.classList.add('pwa-banner-visible');
+        }, 1500);
+
+        btnInstall.innerHTML = '<i class="fa-solid fa-arrow-up-from-bracket"></i> How to Install';
+        btnInstall.addEventListener('click', () => {
+          hideBanner();
+          iosTip.classList.add('pwa-ios-tip-visible');
+        });
+      } else {
+        btnInstall.addEventListener('click', async () => {
+          if (!deferredPrompt) return;
+          hideBanner();
+          deferredPrompt.prompt();
+          const { outcome } = await deferredPrompt.userChoice;
+          console.log('[PWA] Install outcome:', outcome);
+          deferredPrompt = null;
+        });
+      }
+
+      btnDismiss.addEventListener('click', hideBanner);
+      iosTipClose.addEventListener('click', () => {
+        iosTip.classList.remove('pwa-ios-tip-visible');
+      });
+
+      // Hide banner after app is installed
+      window.addEventListener('appinstalled', () => {
+        hideBanner();
+        deferredPrompt = null;
+        console.log('[PWA] App installed!');
+      });
+    })();
+  </script>
 </body>
 
 </html>

@@ -12,22 +12,17 @@
   <link rel="stylesheet" href="styles.css">
 
   <!-- ═══ PWA ════════════════════════════════════════════ -->
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#00f5ff">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="TYPEFALL">
-  <meta name="application-name" content="TYPEFALL">
-  <meta name="msapplication-TileColor" content="#050a0f">
-  <meta name="msapplication-TileImage" content="icons/icon-144.png">
-  <!-- Apple Touch Icons -->
-  <link rel="apple-touch-icon" href="icons/icon-152.png">
-  <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png">
-  <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png">
+  <!-- Apple Touch Icon — root level, no subfolder -->
+  <link rel="apple-touch-icon" href="./icon-192.png">
   <!-- Favicon -->
-  <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-96.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="icons/icon-72.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
 </head>
 
 <body>
@@ -151,7 +146,7 @@
   <!-- ═══ PWA INSTALL BANNER ═══════════════════════════════ -->
   <div id="pwa-install-banner">
     <div id="pwa-banner-icon">
-      <img src="icons/icon-72.png" alt="TYPEFALL icon">
+      <img src="./icon-192.png" alt="TYPEFALL icon">
     </div>
     <div id="pwa-banner-text">
       <div id="pwa-banner-title">Install TYPEFALL</div>
@@ -288,7 +283,7 @@
     // ── Service Worker ───────────────────────────────────────
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
+        navigator.serviceWorker.register('./sw.js')
           .then(reg => console.log('[PWA] SW registered:', reg.scope))
           .catch(err => console.warn('[PWA] SW failed:', err));
       });
